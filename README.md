@@ -29,7 +29,28 @@ $ docker compose up -d
 $ docker logs -f tfg-backend
 ```
 
-Una vez arrancado, la documentación interactiva de la API (Swagger) estará disponible en: http://localhost:3000/api/docs
+El backend arranca correctamente sin necesidad de que Vault contenga la clave privada. Dicha clave solo se requiere en el momento en que se procesa una solicitud de registro; si no está inyectada en ese momento, la operación fallará con error interno.
+
+### 3. Inyección de la Clave Privada en Vault
+
+Una vez levantada la infraestructura, es necesario almacenar en Vault la clave privada de la cuenta firmante. Esta clave es la que autoriza las transacciones en la red blockchain.
+
+**En Alastria (producción):** la clave privada se encuentra en el directorio de claves del nodo, generada durante el proceso de onboarding:
+
+```bash
+cat /data/alastria-node-besu/keys/key
+```
+
+**Inyección en Vault:**
+
+```bash
+curl -H "X-Vault-Token: <VAULT_TOKEN>" \
+     -X POST \
+     -d '{"data":{"privateKey":"<CLAVE_PRIVADA>"}}' \
+     http://localhost:8200/v1/secret/data/blockchain
+```
+
+Una vez inyectada, el servicio está operativo y listo para procesar solicitudes.
 
 ## Estrategia de Pruebas
 
@@ -51,7 +72,7 @@ $ npm run test:cov
 
 Diseñadas para evaluar los mecanismos de tolerancia a fallos y la política de desconexión de carga bajo condiciones de estrés. Se ejecutan en contenedores aislados orquestados por el archivo `docker-compose.load.yml`.
 
-Este archivo se encarga también de configurar la variable `BLOCKCHAIN_MOCK_MODE=true` en el archivo `.env` antes de lanzarlas, para evitar saturar la red blockchain real y medir exclusivamente el rendimiento y límites del servicio. 
+Este archivo se encarga también de configurar la variable `BLOCKCHAIN_MOCK_MODE=true`, para evitar saturar la red blockchain real y medir exclusivamente el rendimiento y límites del servicio.
 
 **Carga Sostenida**
 
@@ -59,7 +80,7 @@ Este archivo se encarga también de configurar la variable `BLOCKCHAIN_MOCK_MODE
 $ npm run test:load
 ```
 
-Propósito: Evalúa la estabilidad del consumo de memoria y la gestión interna de la cola bajo un tráfico constante y moderado durante un periodo prolongado. Nos proporciona una estimación de los valores óptimos de QUEUE_HIGH_LOAD_LIMIT y QUEUE_EXTREME_LOAD_LIMIT según los tiempos de respuesta configurados para los mocks de blockchain.
+Propósito: Evalúa la estabilidad del consumo de memoria y la gestión interna de la cola bajo un tráfico constante y moderado durante un periodo prolongado. Proporciona una estimación de los valores óptimos de `QUEUE_HIGH_LOAD_LIMIT` y `QUEUE_EXTREME_LOAD_LIMIT` según los tiempos de respuesta configurados para los mocks de blockchain.
 
 **Carga en Rampa (Escalado Progresivo)**
 
@@ -69,7 +90,7 @@ $ npm run test:load-rampa
 
 Propósito: Incrementa el número de usuarios concurrentes de forma progresiva. Sirve para identificar el punto exacto de saturación en el cual el sistema activa el encolado en modo diferido o empieza a rechazar peticiones con código HTTP 503.
 
-**Carga Pico (Estrés por Aluvión)**
+**Carga Pico (Estrés)**
 
 ```bash
 $ npm run test:load-pico
