@@ -1,3 +1,11 @@
+/**
+ * @file app.module.ts
+ * @module Root
+ * @description Módulo raíz que define la configuración global, las políticas de 
+ * seguridad, el registro de colas y la orquestación 
+ * de los módulos funcionales del sistema.
+ */
+
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
@@ -12,16 +20,8 @@ import { HealthModule } from './health/health.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([
-      {
-        name: 'short',
-        ttl: 1000,
-        limit: 5,
-      },
-      {
-        name: 'long',
-        ttl: 60000,
-        limit: 100,
-      },
+      { name: 'short', ttl: 1000, limit: 5 },
+      { name: 'long', ttl: 60000, limit: 100 },
     ]),
     BlockchainModule.register(),
     BullModule.forRootAsync({
